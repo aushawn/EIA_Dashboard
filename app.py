@@ -1,87 +1,99 @@
 import streamlit as st
 import pandas as pd
 import requests
+import json
+from datetime import datetime
 import plotly.express as px
-from datetime import datetime, timedelta
+import plotly.graph_objects as go
 
-@st.cache_data(ttl=3600)
-def fetch_eia_data(api_key, start_date, end_date, state_id='US'):
-    url = "https://api.eia.gov/v2/electricity/retail-sales/data"
-    params = {
-        'api_key': api_key,
-        'data[0]': 'value',  # Single data param (fixes 400)
-        'facets[respondent][]': [],  # All respondents
-        'facets[sectorid][]': ['RES'],  # Residential
-        'facets[stateid][]': [state_id],  # Single state (multi fails)
-        'facets[datatype][]': ['SALES', 'PRICE', 'REVENUE', 'CUSTOMERS'],  # Explicit
-        'frequency': 'monthly',
-        'start': start_date,  # YYYYMMDD no -
-        'end': end_date,
-        'sort[0][column]': 'period',
-        'sort[0][direction]': 'desc',
-        'offset': 0,
-        'length': 500
-    }
-    response = requests.get(url, params=params)
-    if response.status_code == 200:
-        data = response.json()['response']['data']
-        if not data:
-            return pd.DataFrame()
-        df = pd.DataFrame(data)
-        df['period'] = pd.to_datetime(df['period'].astype(str), format='%Y%m')
-        numeric_cols = ['value']  # EIA v2 returns 'value' column
-        df[numeric_cols] = df[numeric_cols].astype(float)
-        df['datatype'] = df['datatype'].fillna('UNKNOWN')
-        # Pivot to wide format
-        df_wide = df.pivot(index=['period', 'respondent', 'stateDescription'], 
-                          columns='datatype', values='value').reset_index()
-        df_wide.columns.name = None
-        return df_wide
-    else:
-        st.error(f"API {response.status_code}: {response.text[:300]}")
-        return pd.DataFrame()
+# Page config
+st.set_page_config(page_title="EIA Energy Dashboard", layout="wide")
 
-# States (EIA codes)
-STATE_OPTIONS = ['US', 'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'DC', 'FL', 'GA', 'HI', 'ID', 'IL']
-STATE_NAMES = {'US': 'United States', 'DC': 'District of Columbia', 'CA': 'California', 'TX': 'Texas', 'FL': 'Florida'}  # Add more as needed
-
-st.title("⚡ EIA Residential Electricity Dashboard")
-st.markdown("Fixed API calls + state selector + US map.")
-
-try:
-    api_key = st.secrets["EIA_API_KEY"]
-except:
-    st.error("❌ Add EIA_API_KEY secret.")
-    st.stop()
-
-col1, col2 = st.columns(2)
-with col1:
-    state_id = st.selectbox("State/Region:", STATE_OPTIONS, format_func=lambda x: STATE_NAMES.get(x, x))
-with col2:
-    months_back = st.slider("Months:", 12, 60, 24)
-    end_date = datetime.now().strftime('%Y%m%d')
-    start_date = (datetime.now() - timedelta(days=30*months_back)).strftime('%Y%m%d')
-
-df = fetch_eia_data(api_key, start_date, end_date, state_id)
-
-if not df.empty:
-    # Metrics (latest data)
-    latest = df.tail(1)
-    col1, col2, col3, col4 = st.columns(4)
-    st.metric("Total Sales", f"{latest['SALES'].sum():,.0f} MWh", delta=None)
-    st.metric("Avg Price", f"{latest['PRICE'].mean():.3f} $/kWh", delta=None)
-    st.metric("Revenue", f"{latest['REVENUE'].sum():,.0f} $M", delta=None)
-    st.metric("Customers", f"{latest['CUSTOMERS'].mean():,.0f} M", delta=None)
-
-    # Map (dummy for single state; full map needs all-states fetch)
-    st.subheader("Price Trends")
-    fig = px.line(df, x='period', y='PRICE', title=f"{STATE_NAMES.get(state_id, state_id)} - Price Over Time")
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.subheader("Full Data")
-    st.dataframe(df[['period', 'SALES', 'PRICE', 'REVENUE', 'CUSTOMERS']].round(2))
+# EIA API setup
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def fetch_eia_data(frequency='monthly', state='US', sector='RES', data_types=['sales', 'revenue', 'price']):
+    api_key = st.secrets.get("EIA_API_KEY")
+    if not api_key:
+        st.error("Set EIA_API_KEY in Hugging Face Spaces secrets.")
+        return None
     
-    csv = df.to_csv(index=False).encode()
-    st.download_button("Download CSV", csv, "eia_data.csv")
-else:
-    st.warning("No data. Try 'US' or check API key.")
+    url = "https://api.eia.gov/v2/electricity/retail-sales/data"
+    
+    facets = {'stateid': [state], 'sectorid': [sector]}
+    params_dict = {
+        'frequency': frequency,
+        'data': data_types,
+        'facets': facets,
+        'start': '2020-01',  # Adjust as needed
+        'end': datetime.now().strftime('%Y-%m'),
+        'sort': [{'column': {'name': 'period'}}, {'column': {'name': 'stateid'}}],
+        'offset': 0,
+        'length': 5000
+    }
+    
+    params = {'api_key': api_key}
+    headers = {'X-Params': json.dumps(params_dict)}
+    
+    try:
+        resp = requests.get(url, params=params, headers=headers)
+        resp.raise_for_status()
+        data = resp.json()
+        
+        if 'response' in data and 'data' in data['response']:
+            df = pd.DataFrame(data['response']['data'])
+            if not df.empty:
+                df['period'] = pd.to_datetime(df['period'])
+                df = df.pivot(index='period', columns='type', values='value').reset_index()
+                df = df.dropna()
+                return df.sort_values('period')
+        st.warning("No data returned. Check facets or date range.")
+        return None
+    except Exception as e:
+        st.error(f"API error: {str(e)}")
+        return None
+
+# Streamlit app
+st.title("🛢️ EIA Electricity Retail Sales Dashboard")
+st.markdown("Fetches live data on electricity sales, revenue, and prices. Focuses on residential (RES) by default.")
+
+col1, col2, col3 = st.columns(3)
+with col1:
+    frequency = st.selectbox("Frequency", ['monthly', 'annual', 'quarterly'])
+with col2:
+    state = st.selectbox("State", ['US', 'DC', 'TX', 'CA', 'NY'])  # DC for your area
+with col3:
+    sector = st.selectbox("Sector", ['RES', 'IND', 'COM', 'TRA'])
+
+if st.button("Fetch & Analyze Data", type="primary"):
+    with st.spinner("Pinging EIA API..."):
+        df = fetch_eia_data(frequency, state, sector)
+    
+    if df is not None:
+        st.success(f"Loaded {len(df)} periods of data.")
+        
+        # Summary stats
+        st.subheader("Summary Statistics")
+        col_a, col_b, col_c = st.columns(3)
+        with col_a:
+            st.metric("Avg Sales (M kWh)", f"{df['sales'].mean():.1f}")
+        with col_b:
+            st.metric("Avg Price ($/kWh)", f"{df['price'].mean():.4f}")
+        with col_c:
+            st.metric("Total Revenue ($M)", f"{df['revenue'].sum():.0f}")
+        
+        stats_df = df[['sales', 'revenue', 'price']].describe().round(2)
+        st.dataframe(stats_df)
+        
+        # Graphs
+        st.subheader("Trends")
+        fig_line = px.line(df, x='period', y=['sales', 'revenue', 'price'], 
+                          title=f"{sector} Electricity Metrics - {state}")
+        fig_line.update_yaxes(title="Value")
+        st.plotly_chart(fig_line, use_container_width=True)
+        
+        fig_bar = px.bar(df, x='period', y='price', title="Price Over Time")
+        st.plotly_chart(fig_bar, use_container_width=True)
+        
+        st.dataframe(df.tail(12), use_container_width=True)
+    else:
+        st.stop()
