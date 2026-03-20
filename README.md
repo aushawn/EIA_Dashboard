@@ -1,6 +1,6 @@
 # ⚡ EIA Electricity Dashboard
 
-[![Open in Spaces](https://huggingface.co)](https://huggingface.co/spaces/ShawnAu/eia-electricity-dashboard)
+[![Open in Spaces](https://huggingface.co/datasets/huggingface/badges/resolve/main/open-in-hf-spaces-md.svg?download=true)](https://huggingface.co/spaces/ShawnAu/eia-electricity-dashboard)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
