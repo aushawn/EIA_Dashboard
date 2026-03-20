@@ -122,7 +122,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 - [U.S. Energy Information Administration](https://www.eia.gov/opendata/) - Public energy data
 - [Streamlit](https://streamlit.io) - Web app framework
-- FERC energy analysts who inspired clean data dashboards
 
 ---
 
