@@ -1,6 +1,6 @@
 # ⚡ EIA Electricity Dashboard
 
-[![Streamlit App](https://static.streamlit.io/badges/app-badge.svg)](https://your-space.hf.space)
+[![Open in Spaces](https://huggingface.co)](https://huggingface.co/spaces/ShawnAu/eia-electricity-dashboard)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -17,8 +17,7 @@ Summary statistics include total MWh sold, average $/kWh price, revenue generate
 *   **Fast Deployment**: Ultra-lightweight (2 deps only) - deploys in 45 seconds on HF Spaces/Streamlit Cloud
 
 ## 📸 Demo
-![EIA Dashboard Screenshot](screenshot.png)
-*Clean metrics display with live EIA residential electricity data*
+See the app deployed on HuggingFaces :hugs: [link](https://huggingface.co/spaces/ShawnAu/eia-electricity-dashboard)
 
 ---
 
