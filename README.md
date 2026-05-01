@@ -5,13 +5,13 @@
 
 **Live U.S. residential electricity data dashboard** pulling real-time metrics from the EIA API. Perfect for energy analysts tracking sales, pricing, revenue, and customer trends with up-to-date energy-relevant data.
 
-Summary statistics include total MWh sold, average $/kWh price, revenue generated, and residential customer counts—updated monthly via public EIA API.
+Summary statistics include total MWh sold, average cents/kWh price, revenue generated, and residential customer counts—updated monthly via public EIA API.
 
 ---
 
 ## 🌟 Key Features
 *   **Live EIA Data**: Real-time residential electricity sales, price, revenue, customers from U.S. Energy Information Administration API
-*   **Key Metrics Display**: Clean summary stats with formatted numbers (MWh, $/kWh, $M, customers)
+*   **Key Metrics Display**: Clean summary stats with formatted numbers (MWh, cents/kWh, $M, customers)
 *   **Secure API Handling**: EIA API key stored in Streamlit secrets (local `.streamlit/secrets.toml` or HF Spaces secrets)
 *   **Fast Deployment**: Ultra-lightweight (2 deps only) - deploys in 45 seconds on HF Spaces/Streamlit Cloud
 
